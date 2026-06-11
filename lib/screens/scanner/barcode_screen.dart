@@ -17,7 +17,6 @@ class _BarcodeScreenState extends State<BarcodeScreen>
     with AutomaticKeepAliveClientMixin {
   late final TextEditingController _barcodeController;
   late final TextEditingController _expiryDateController;
-  late final MobileScannerController _scannerController;
 
   bool _isProcessingScan = false;
   bool _showManualEntry = false;
@@ -32,18 +31,12 @@ class _BarcodeScreenState extends State<BarcodeScreen>
     super.initState();
     _barcodeController = TextEditingController();
     _expiryDateController = TextEditingController();
-    _scannerController = MobileScannerController(
-      detectionSpeed: DetectionSpeed.noDuplicates,
-      facing: CameraFacing.back,
-      returnImage: false,
-    );
   }
 
   @override
   void dispose() {
     _barcodeController.dispose();
     _expiryDateController.dispose();
-    _scannerController.dispose();
     super.dispose();
   }
 
@@ -65,7 +58,6 @@ class _BarcodeScreenState extends State<BarcodeScreen>
       _itemCount = 1;
     });
 
-    await _scannerController.stop();
     await provider.lookupBarcode(cleaned);
 
     if (!mounted) {
@@ -84,10 +76,10 @@ class _BarcodeScreenState extends State<BarcodeScreen>
     setState(() {
       _lastScannedCode = null;
       _isProcessingScan = false;
+      _showManualEntry = false;
       _expiryDateController.clear();
       _itemCount = 1;
     });
-    await _scannerController.start();
   }
 
   Future<void> _manualLookup(FoodProvider provider) async {
@@ -96,7 +88,6 @@ class _BarcodeScreenState extends State<BarcodeScreen>
   }
 
   Future<void> _closeScanner() async {
-    await _scannerController.stop();
     if (!mounted) {
       return;
     }
@@ -149,20 +140,48 @@ class _BarcodeScreenState extends State<BarcodeScreen>
 
     return PopScope(
       onPopInvokedWithResult: (_, result) {
-        _scannerController.stop();
       },
       child: Scaffold(
         body: Stack(
           children: [
             Positioned.fill(
               child: MobileScanner(
-                controller: _scannerController,
                 fit: BoxFit.cover,
+                useAppLifecycleState: false,
                 onDetect: (capture) {
                   final code = capture.barcodes.firstOrNull?.rawValue;
                   if (code != null) {
                     _handleBarcode(context, context.read<FoodProvider>(), code);
                   }
+                },
+                onDetectError: (error, stackTrace) {
+                  debugPrint('MobileScanner onDetectError: $error');
+                  debugPrintStack(stackTrace: stackTrace);
+                },
+                errorBuilder: (context, error) {
+                  final details = error.errorDetails;
+                  final detailsText = [
+                    details?.message,
+                    if (details?.details case final String extra) extra,
+                  ].whereType<String>().join('\n\n');
+
+                  return ColoredBox(
+                    color: Colors.black,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            detailsText.isEmpty
+                                ? error.errorCode.message
+                                : '${error.errorCode.message}\n\n$detailsText',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
                 },
               ),
             ),
