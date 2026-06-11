@@ -16,11 +16,13 @@ class BarcodeScreen extends StatefulWidget {
 class _BarcodeScreenState extends State<BarcodeScreen>
     with AutomaticKeepAliveClientMixin {
   late final TextEditingController _barcodeController;
+  late final TextEditingController _expiryDateController;
   late final MobileScannerController _scannerController;
 
   bool _isProcessingScan = false;
   bool _showManualEntry = false;
   String? _lastScannedCode;
+  int _itemCount = 1;
 
   @override
   bool get wantKeepAlive => true;
@@ -29,6 +31,7 @@ class _BarcodeScreenState extends State<BarcodeScreen>
   void initState() {
     super.initState();
     _barcodeController = TextEditingController();
+    _expiryDateController = TextEditingController();
     _scannerController = MobileScannerController(
       detectionSpeed: DetectionSpeed.noDuplicates,
       facing: CameraFacing.back,
@@ -39,6 +42,7 @@ class _BarcodeScreenState extends State<BarcodeScreen>
   @override
   void dispose() {
     _barcodeController.dispose();
+    _expiryDateController.dispose();
     _scannerController.dispose();
     super.dispose();
   }
@@ -57,6 +61,8 @@ class _BarcodeScreenState extends State<BarcodeScreen>
       _isProcessingScan = true;
       _lastScannedCode = cleaned;
       _barcodeController.text = cleaned;
+      _expiryDateController.clear();
+      _itemCount = 1;
     });
 
     await _scannerController.stop();
@@ -78,6 +84,8 @@ class _BarcodeScreenState extends State<BarcodeScreen>
     setState(() {
       _lastScannedCode = null;
       _isProcessingScan = false;
+      _expiryDateController.clear();
+      _itemCount = 1;
     });
     await _scannerController.start();
   }
@@ -96,13 +104,43 @@ class _BarcodeScreenState extends State<BarcodeScreen>
   }
 
   Future<void> _saveAndClose(FoodProvider provider) async {
-    await provider.saveLatestLookup();
+    await provider.saveLatestLookup(
+      expiryDate: _expiryDateController.text.trim().isEmpty
+          ? null
+          : _expiryDateController.text.trim(),
+      quantity: _itemCount,
+    );
     if (!mounted ||
         provider.errorMessage != null ||
         provider.latestLookup == null) {
       return;
     }
     await _closeScanner();
+  }
+
+  Future<void> _pickExpiryDate() async {
+    final now = DateTime.now();
+    final initialDate =
+        DateTime.tryParse(_expiryDateController.text.trim()) ??
+        now.add(const Duration(days: 7));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate.isBefore(now) ? now : initialDate,
+      firstDate: now,
+      lastDate: DateTime(now.year + 10),
+      builder: (context, child) {
+        return Theme(data: Theme.of(context), child: child!);
+      },
+    );
+
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _expiryDateController.text =
+          '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+    });
   }
 
   @override
@@ -184,10 +222,6 @@ class _BarcodeScreenState extends State<BarcodeScreen>
                               ],
                             ),
                             const SizedBox(height: 10),
-                            Text(
-                              'Point the camera at a food barcode. If scanning fails, enter it manually or retry.',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
                             const SizedBox(height: 24),
                             Center(
                               child: SizedBox(
@@ -239,32 +273,6 @@ class _BarcodeScreenState extends State<BarcodeScreen>
                                           left: false,
                                         ),
                                       ),
-                                      Positioned(
-                                        left: 20,
-                                        right: 20,
-                                        bottom: 24,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.6,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              18,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            _lastScannedCode == null
-                                                ? 'Scanning is live. Hold the barcode steady inside the frame.'
-                                                : 'Last scanned: $_lastScannedCode',
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.bodyMedium,
-                                          ),
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -301,6 +309,7 @@ class _BarcodeScreenState extends State<BarcodeScreen>
                                 ),
                               ),
                               child: SingleChildScrollView(
+                                physics: const BouncingScrollPhysics(),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -446,7 +455,30 @@ class _BarcodeScreenState extends State<BarcodeScreen>
                                             '${provider.errorMessage!} You can retry the scan or enter the barcode manually.',
                                       )
                                     else if (lookup != null)
-                                      _LookupCard(item: lookup)
+                                      Column(
+                                        children: [
+                                          _LookupCard(item: lookup),
+                                          const SizedBox(height: 14),
+                                          _ScanSaveDetailsCard(
+                                            expiryDateController:
+                                                _expiryDateController,
+                                            itemCount: _itemCount,
+                                            onPickExpiryDate: _pickExpiryDate,
+                                            onDecreaseCount: _itemCount > 1
+                                                ? () {
+                                                    setState(() {
+                                                      _itemCount -= 1;
+                                                    });
+                                                  }
+                                                : null,
+                                            onIncreaseCount: () {
+                                              setState(() {
+                                                _itemCount += 1;
+                                              });
+                                            },
+                                          ),
+                                        ],
+                                      )
                                     else
                                       const _StatusCard(
                                         title: 'Ready to scan',
@@ -467,6 +499,96 @@ class _BarcodeScreenState extends State<BarcodeScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ScanSaveDetailsCard extends StatelessWidget {
+  const _ScanSaveDetailsCard({
+    required this.expiryDateController,
+    required this.itemCount,
+    required this.onPickExpiryDate,
+    required this.onDecreaseCount,
+    required this.onIncreaseCount,
+  });
+
+  final TextEditingController expiryDateController;
+  final int itemCount;
+  final VoidCallback onPickExpiryDate;
+  final VoidCallback? onDecreaseCount;
+  final VoidCallback onIncreaseCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.panel,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0x12FFFFFF)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          TextField(
+            controller: expiryDateController,
+            readOnly: true,
+            onTap: onPickExpiryDate,
+            decoration: InputDecoration(
+              labelText: 'Expiry date',
+              hintText: 'Optional',
+              suffixIcon: IconButton(
+                onPressed: onPickExpiryDate,
+                icon: const Icon(Icons.calendar_today_rounded),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppTheme.panelSoft,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0x12FFFFFF)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Amount to save',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                _CounterButton(
+                  icon: Icons.remove_rounded,
+                  onTap: onDecreaseCount,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Text(
+                    '$itemCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                _CounterButton(icon: Icons.add_rounded, onTap: onIncreaseCount),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -536,10 +658,36 @@ class _LookupCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Quantity: ${item.quantityLabel}',
+            'Size/detail: ${item.packageDetail}',
             style: Theme.of(context).textTheme.bodyLarge,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CounterButton extends StatelessWidget {
+  const _CounterButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Opacity(
+        opacity: onTap == null ? 0.4 : 1,
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: Colors.black),
+        ),
       ),
     );
   }

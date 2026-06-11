@@ -24,7 +24,7 @@ class BarcodeService {
             uri,
             headers: const {
               'Accept': 'application/json',
-              'User-Agent': 'SmartFoodTracker/1.0 (Flutter)',
+              'User-Agent': 'Fridgi/1.0 (Flutter)',
             },
           )
           .timeout(const Duration(seconds: 12));

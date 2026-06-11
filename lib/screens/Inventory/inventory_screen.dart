@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_theme.dart';
 import '../../models/food_item.dart';
 import '../../providers/food_provider.dart';
+import '../food/edit_food_screen.dart';
 
 class InventoryScreen extends StatelessWidget {
   const InventoryScreen({super.key});
@@ -13,10 +14,11 @@ class InventoryScreen extends StatelessWidget {
     return Consumer<FoodProvider>(
       builder: (context, provider, _) {
         final availableItems = provider.availableItems;
-        final recentItems = provider.items.take(3).toList();
+        final historyItems = provider.archivedItems.take(3).toList();
 
         return SafeArea(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 140),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -25,7 +27,7 @@ class InventoryScreen extends StatelessWidget {
                   'Inventory',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                
+
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -79,19 +81,14 @@ class InventoryScreen extends StatelessWidget {
                         'Scan a barcode or save a food item to start building your inventory.',
                   )
                 else
-                  ...availableItems
-                      .take(3)
-                      .map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _InventoryEntry(item: item),
-                        ),
-                      ),
+                  ...availableItems.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _InventoryEntry(item: item),
+                    ),
+                  ),
                 const SizedBox(height: 24),
-                Text(
-                  'Recently added',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('History', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 14),
                 Container(
                   padding: const EdgeInsets.all(20),
@@ -100,15 +97,15 @@ class InventoryScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(color: const Color(0x12FFFFFF)),
                   ),
-                  child: recentItems.isEmpty
+                  child: historyItems.isEmpty
                       ? const _EmptyInventoryState(
-                          title: 'No item history yet',
+                          title: 'No used items yet',
                           subtitle:
-                              'Saved products from Open Food Facts will appear here.',
+                              'Items marked used or out of stock will appear here.',
                           compact: true,
                         )
                       : Column(
-                          children: recentItems
+                          children: historyItems
                               .map(
                                 (item) => Padding(
                                   padding: const EdgeInsets.only(bottom: 14),
@@ -180,6 +177,7 @@ class _InventoryEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final highlighted = item.expiryDate != null;
+    final foreground = highlighted ? Colors.black : Colors.white;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -201,7 +199,7 @@ class _InventoryEntry extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.inventory_2_rounded,
+              _itemIcon(item),
               color: highlighted ? Colors.white : Colors.black,
             ),
           ),
@@ -229,8 +227,15 @@ class _InventoryEntry extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  item.expiryDate ??
-                      'Saved from ${item.source.replaceAll('_', ' ')}',
+                  item.packageDetail,
+                  style: TextStyle(
+                    color: highlighted ? Colors.black54 : Colors.white60,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.expiryDate ?? 'No expiry date added',
                   style: TextStyle(
                     color: highlighted ? Colors.black87 : Colors.white70,
                     fontWeight: FontWeight.w600,
@@ -240,17 +245,28 @@ class _InventoryEntry extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              item.quantityLabel,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                color: highlighted ? Colors.black : Colors.white,
-                fontWeight: FontWeight.w700,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              IconButton(
+                tooltip: 'Edit item',
+                onPressed: () => _openEditFoodScreen(context, item),
+                icon: Icon(Icons.edit_rounded, color: foreground),
               ),
-            ),
+              SizedBox(
+                width: 92,
+                child: Text(
+                  item.stockCount.toString(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -275,7 +291,7 @@ class _MiniInventoryRow extends StatelessWidget {
             color: AppTheme.surface,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.add_box_rounded, color: Colors.black),
+          child: Icon(_itemIcon(item), color: Colors.black),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -285,28 +301,53 @@ class _MiniInventoryRow extends StatelessWidget {
               Text(item.name, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(
-                item.brand ?? 'Saved from ${item.source.replaceAll('_', ' ')}',
+                item.brand == null
+                    ? item.packageDetail
+                    : '${item.brand} | ${item.packageDetail}',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),
         ),
         const SizedBox(width: 12),
-        Flexible(
-          child: Text(
-            item.quantityLabel,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.end,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            IconButton(
+              tooltip: 'Edit item',
+              onPressed: () => _openEditFoodScreen(context, item),
+              icon: const Icon(Icons.edit_rounded, color: Colors.white),
             ),
-          ),
+            SizedBox(
+              width: 92,
+              child: Text(
+                item.stockCount.toString(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
+}
+
+Future<void> _openEditFoodScreen(BuildContext context, FoodItem item) {
+  return Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => EditFoodScreen(item: item)));
+}
+
+IconData _itemIcon(FoodItem item) {
+  return item.category.toLowerCase() == 'drink'
+      ? Icons.local_cafe_rounded
+      : Icons.lunch_dining_rounded;
 }
 
 class _EmptyInventoryState extends StatelessWidget {

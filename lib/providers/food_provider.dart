@@ -87,15 +87,21 @@ class FoodProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> saveLatestLookup() async {
+  Future<void> saveLatestLookup({String? expiryDate, int quantity = 1}) async {
     final lookup = _latestLookup;
     if (lookup == null) {
       return;
     }
 
+    final itemToSave = lookup.copyWith(
+      expiryDate: expiryDate ?? lookup.expiryDate,
+      quantityLabel: _buildQuantityLabel(lookup.quantityLabel, quantity),
+      updatedAt: DateTime.now(),
+    );
+
     _setLoading(true);
     try {
-      final saved = await _databaseHelper.saveScannedItem(lookup);
+      final saved = await _databaseHelper.saveScannedItem(itemToSave);
       final index = _items.indexWhere((item) => item.id == saved.id);
       if (index == -1) {
         _items.insert(0, saved);
@@ -157,6 +163,62 @@ class FoodProvider extends ChangeNotifier {
     }
   }
 
+  Future<FoodItem?> updateFoodItem({
+    required FoodItem item,
+    required String name,
+    required String category,
+    required String quantityLabel,
+    String? brand,
+    String? expiryDate,
+    double calories = 0,
+    double protein = 0,
+    double carbs = 0,
+    double fat = 0,
+  }) async {
+    if (item.id == null) {
+      return null;
+    }
+
+    final updated = FoodItem(
+      id: item.id,
+      name: name,
+      category: category,
+      quantityLabel: quantityLabel,
+      source: item.source,
+      createdAt: item.createdAt,
+      updatedAt: DateTime.now(),
+      barcode: item.barcode,
+      brand: brand,
+      expiryDate: expiryDate,
+      imageUrl: item.imageUrl,
+      nutrition: Nutrition(
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
+      ),
+      isInInventory: item.isInInventory,
+    );
+
+    _setLoading(true);
+    try {
+      await _databaseHelper.updateFoodItem(updated);
+      final index = _items.indexWhere((entry) => entry.id == item.id);
+      if (index != -1) {
+        _items[index] = updated;
+      }
+      _items.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      _errorMessage = null;
+      notifyListeners();
+      return updated;
+    } catch (error) {
+      _errorMessage = error.toString();
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> toggleInventoryStatus(FoodItem item) async {
     if (item.id == null) {
       return;
@@ -182,5 +244,13 @@ class FoodProvider extends ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  String _buildQuantityLabel(String baseLabel, int quantity) {
+    final normalizedBase = baseLabel.replaceFirst(
+      RegExp(r'^\d+\s*x\s+', caseSensitive: false),
+      '',
+    );
+    return '${quantity.clamp(1, 999)} x $normalizedBase';
   }
 }

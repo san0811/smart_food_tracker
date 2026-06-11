@@ -5,58 +5,31 @@ import '../../config/app_theme.dart';
 import '../../models/food_item.dart';
 import '../../providers/food_provider.dart';
 
-class FoodListScreen extends StatefulWidget {
+class FoodListScreen extends StatelessWidget {
   const FoodListScreen({super.key});
-
-  @override
-  State<FoodListScreen> createState() => _FoodListScreenState();
-}
-
-class _FoodListScreenState extends State<FoodListScreen> {
-  int _selectedTab = 0;
 
   @override
   Widget build(BuildContext context) {
     return Consumer<FoodProvider>(
       builder: (context, provider, _) {
-        final items = _selectedTab == 0
-            ? provider.availableItems
-            : provider.items;
+        final items = provider.archivedItems;
 
         return SafeArea(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 140),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Items', style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _SegmentButton(
-                          label: 'Available Items',
-                          selected: _selectedTab == 0,
-                          onTap: () => setState(() => _selectedTab = 0),
-                        ),
-                      ),
-                      Expanded(
-                        child: _SegmentButton(
-                          label: 'My Items',
-                          selected: _selectedTab == 1,
-                          onTap: () => setState(() => _selectedTab = 1),
-                        ),
-                      ),
-                    ],
-                  ),
+                Text(
+                  'History',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 10),
+                Text(
+                  'Used and out-of-stock items stay here so your active inventory stays clean.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
                 const SizedBox(height: 24),
                 _FoodList(items: items),
               ],
@@ -64,42 +37,6 @@ class _FoodListScreenState extends State<FoodListScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class _SegmentButton extends StatelessWidget {
-  const _SegmentButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? Colors.black : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: selected ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -115,15 +52,19 @@ class _FoodList extends StatelessWidget {
       return const _EmptyItemsState();
     }
 
-    return Column(
-      children: items
-          .map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _FoodCard(data: item),
-            ),
-          )
-          .toList(),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 260),
+      child: Column(
+        key: ValueKey(items.length),
+        children: items
+            .map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _FoodCard(data: item),
+              ),
+            )
+            .toList(),
+      ),
     );
   }
 }
@@ -160,8 +101,8 @@ class _FoodCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         data.brand == null
-                            ? data.category
-                            : '${data.brand} | ${data.category}',
+                            ? '${data.category} | ${data.packageDetail}'
+                            : '${data.brand} | ${data.category} | ${data.packageDetail}',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
@@ -181,7 +122,7 @@ class _FoodCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      data.quantityLabel,
+                      data.stockCount.toString(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
@@ -267,11 +208,7 @@ class _FoodCard extends StatelessWidget {
                     onPressed: () => context
                         .read<FoodProvider>()
                         .toggleInventoryStatus(data),
-                    child: Text(
-                      data.isInInventory ? 'Mark used' : 'Return to inventory',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: const Text('Return to inventory'),
                   ),
                 ),
               ],
@@ -334,10 +271,10 @@ class _EmptyItemsState extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('No items yet', style: Theme.of(context).textTheme.titleLarge),
+          Text('No history yet', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 10),
           Text(
-            'Use the add food tab to scan a barcode or enter an item manually.',
+            'When an item is marked used, it will move from inventory into history.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],

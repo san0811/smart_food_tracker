@@ -6,6 +6,8 @@ class AppTheme {
   static const Color panelSoft = Color(0xFF1A1A1A);
   static const Color surface = Color(0xFFF5F1EA);
   static const Color surfaceMuted = Color(0xFFE6DED2);
+  static const Color actionBlue = Color(0xFFD6B58A);
+  static const Color actionBlueOnDark = Color(0xFFF3E3B3);
   static const Color accent = Color(0xFFD6B58A);
   static const Color success = Color(0xFF8DB596);
   static const Color warning = Color(0xFFE5C07B);
@@ -29,7 +31,6 @@ class AppTheme {
           fontSize: 30,
           fontWeight: FontWeight.w700,
           color: Colors.white,
-          letterSpacing: -0.7,
         ),
         headlineSmall: TextStyle(
           fontSize: 24,
@@ -66,7 +67,7 @@ class AppTheme {
         color: panel,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(34),
           side: const BorderSide(color: Color(0x14FFFFFF)),
         ),
       ),
@@ -75,16 +76,30 @@ class AppTheme {
         fillColor: panelSoft,
         hintStyle: const TextStyle(color: Color(0xFF8A857D)),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(26),
           borderSide: const BorderSide(color: Color(0x22FFFFFF)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(26),
           borderSide: const BorderSide(color: Color(0x22FFFFFF)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(26),
           borderSide: const BorderSide(color: surface),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: actionBlue,
+          foregroundColor: Colors.white,
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          minimumSize: const Size.square(44),
+          shape: const CircleBorder(),
         ),
       ),
     );

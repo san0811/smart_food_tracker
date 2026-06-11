@@ -1,11 +1,11 @@
 {
-    "name": "smart_food_tracker",
-    "short_name": "smart_food_tracker",
+    "name": "Fridgi",
+    "short_name": "Fridgi",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Fridgi food inventory and expiry tracker.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

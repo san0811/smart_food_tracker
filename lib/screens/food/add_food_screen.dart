@@ -19,6 +19,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
   final _categoryController = TextEditingController();
+  final _amountController = TextEditingController(text: '1');
   final _quantityController = TextEditingController();
   final _expiryController = TextEditingController();
   final _caloriesController = TextEditingController();
@@ -33,6 +34,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     _nameController.dispose();
     _brandController.dispose();
     _categoryController.dispose();
+    _amountController.dispose();
     _quantityController.dispose();
     _expiryController.dispose();
     _caloriesController.dispose();
@@ -70,7 +72,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
       name: _nameController.text.trim(),
       brand: _optionalValue(_brandController),
       category: _categoryController.text.trim(),
-      quantityLabel: _quantityController.text.trim(),
+      quantityLabel: _manualQuantityLabel(),
       expiryDate: _optionalValue(_expiryController),
       calories: _parseNumber(_caloriesController),
       protein: _parseNumber(_proteinController),
@@ -85,13 +87,18 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     _formKey.currentState!.reset();
     _nameController.clear();
     _brandController.clear();
-    _categoryController.clear();
+    _categoryController.text = 'Food';
+    _amountController.text = '1';
     _quantityController.clear();
     _expiryController.clear();
     _caloriesController.clear();
     _proteinController.clear();
     _carbsController.clear();
     _fatController.clear();
+
+    setState(() {
+      _selectedOption = null;
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${saved.name} added to your inventory')),
@@ -107,12 +114,22 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     return double.tryParse(controller.text.trim()) ?? 0;
   }
 
+  String _manualQuantityLabel() {
+    final amount = int.tryParse(_amountController.text.trim()) ?? 1;
+    final category = _categoryController.text.trim().toLowerCase();
+    final detail = category == 'drink'
+        ? _quantityController.text.trim()
+        : 'item';
+    return '${amount.clamp(1, 999)} x $detail';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<FoodProvider>(
       builder: (context, provider, _) {
         return SafeArea(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 140),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,16 +139,11 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  'Choose how you want to add a food item to your inventory.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
                 const SizedBox(height: 24),
                 _AddOptionCard(
                   icon: Icons.edit_note_rounded,
                   title: 'Add manually',
-                  subtitle:
-                      'Open a form and enter the food name, quantity, and nutrition details.',
+                  subtitle: 'Enter the food details manually.',
                   selected: _selectedOption == _AddFoodOption.manual,
                   actionLabel: 'Open form',
                   onTap: () {
@@ -144,8 +156,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                 _AddOptionCard(
                   icon: Icons.qr_code_scanner_rounded,
                   title: 'Scan barcode',
-                  subtitle:
-                      'Use the camera to scan packaged food and fetch nutrition data automatically.',
+                  subtitle: 'Use your camera to scan the food barcode.',
                   selected: _selectedOption == _AddFoodOption.barcode,
                   actionLabel: 'Open camera',
                   onTap: _openBarcodeScanner,
@@ -162,6 +173,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                     nameController: _nameController,
                     brandController: _brandController,
                     categoryController: _categoryController,
+                    amountController: _amountController,
                     quantityController: _quantityController,
                     expiryController: _expiryController,
                     caloriesController: _caloriesController,
@@ -224,12 +236,12 @@ class _AddOptionCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
           color: selected ? AppTheme.surface : AppTheme.panel,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(34),
           border: Border.all(
-            color: selected ? Colors.transparent : const Color(0x12FFFFFF),
+            color: selected ? AppTheme.actionBlue : const Color(0x12FFFFFF),
           ),
         ),
         child: Row(
@@ -239,12 +251,12 @@ class _AddOptionCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: selected ? Colors.black : AppTheme.panelSoft,
-                shape: BoxShape.circle,
+                color: selected ? AppTheme.actionBlue : AppTheme.panelSoft,
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
                 icon,
-                color: selected ? Colors.white : AppTheme.surface,
+                color: selected ? Colors.white : AppTheme.actionBlueOnDark,
               ),
             ),
             const SizedBox(width: 16),
@@ -268,8 +280,8 @@ class _AddOptionCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   Text(
                     actionLabel,
-                    style: TextStyle(
-                      color: selected ? Colors.black : AppTheme.surface,
+                    style: const TextStyle(
+                      color: AppTheme.actionBlueOnDark,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -288,19 +300,7 @@ class _AddFoodHintCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.panelSoft,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x14FFFFFF)),
-      ),
-      child: Text(
-        'Pick one option above. Manual entry opens a form here, while barcode scan launches the camera.',
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
-    );
+    return Container(width: double.infinity);
   }
 }
 
@@ -310,6 +310,7 @@ class _ManualFoodForm extends StatelessWidget {
     required this.nameController,
     required this.brandController,
     required this.categoryController,
+    required this.amountController,
     required this.quantityController,
     required this.expiryController,
     required this.caloriesController,
@@ -324,6 +325,7 @@ class _ManualFoodForm extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController brandController;
   final TextEditingController categoryController;
+  final TextEditingController amountController;
   final TextEditingController quantityController;
   final TextEditingController expiryController;
   final TextEditingController caloriesController;
@@ -335,16 +337,98 @@ class _ManualFoodForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return _ManualFoodFormBody(
+      formKey: formKey,
+      nameController: nameController,
+      brandController: brandController,
+      categoryController: categoryController,
+      amountController: amountController,
+      quantityController: quantityController,
+      expiryController: expiryController,
+      caloriesController: caloriesController,
+      proteinController: proteinController,
+      carbsController: carbsController,
+      fatController: fatController,
+      isLoading: isLoading,
+      onSubmit: onSubmit,
+    );
+  }
+}
+
+class _ManualFoodFormBody extends StatefulWidget {
+  const _ManualFoodFormBody({
+    required this.formKey,
+    required this.nameController,
+    required this.brandController,
+    required this.categoryController,
+    required this.amountController,
+    required this.quantityController,
+    required this.expiryController,
+    required this.caloriesController,
+    required this.proteinController,
+    required this.carbsController,
+    required this.fatController,
+    required this.isLoading,
+    required this.onSubmit,
+  });
+
+  final GlobalKey<FormState> formKey;
+  final TextEditingController nameController;
+  final TextEditingController brandController;
+  final TextEditingController categoryController;
+  final TextEditingController amountController;
+  final TextEditingController quantityController;
+  final TextEditingController expiryController;
+  final TextEditingController caloriesController;
+  final TextEditingController proteinController;
+  final TextEditingController carbsController;
+  final TextEditingController fatController;
+  final bool isLoading;
+  final VoidCallback onSubmit;
+
+  @override
+  State<_ManualFoodFormBody> createState() => _ManualFoodFormBodyState();
+}
+
+class _ManualFoodFormBodyState extends State<_ManualFoodFormBody> {
+  static const _categories = {'Food', 'Drink'};
+  late String _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.categoryController.text.trim();
+    _selectedCategory = _categories.contains(existing) ? existing : 'Food';
+    widget.categoryController.text = _selectedCategory;
+    if (widget.amountController.text.trim().isEmpty) {
+      widget.amountController.text = '1';
+    }
+  }
+
+  bool get _isDrink => _selectedCategory == 'Drink';
+
+  void _selectCategory(String value) {
+    setState(() {
+      _selectedCategory = value;
+      widget.categoryController.text = value;
+      if (value != 'Drink') {
+        widget.quantityController.clear();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: AppTheme.panel,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(34),
         border: Border.all(color: const Color(0x12FFFFFF)),
       ),
       child: Form(
-        key: formKey,
+        key: widget.formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -356,7 +440,7 @@ class _ManualFoodForm extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             TextFormField(
-              controller: nameController,
+              controller: widget.nameController,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(labelText: 'Food name'),
               validator: (value) {
@@ -368,7 +452,7 @@ class _ManualFoodForm extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             TextFormField(
-              controller: brandController,
+              controller: widget.brandController,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Brand',
@@ -376,35 +460,73 @@ class _ManualFoodForm extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            TextFormField(
-              controller: categoryController,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Category'),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Enter a category';
-                }
-                return null;
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: _CategoryChoice(
+                    label: 'Food',
+                    icon: Icons.lunch_dining_rounded,
+                    selected: _selectedCategory == 'Food',
+                    onTap: () => _selectCategory('Food'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _CategoryChoice(
+                    label: 'Drink',
+                    icon: Icons.local_cafe_rounded,
+                    selected: _selectedCategory == 'Drink',
+                    onTap: () => _selectCategory('Drink'),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 14),
             TextFormField(
-              controller: quantityController,
+              controller: widget.amountController,
+              keyboardType: TextInputType.number,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
-                labelText: 'Quantity',
-                hintText: 'Example: 1 bottle, 500g, 2 packs',
+                labelText: 'Amount',
+                hintText: 'Example: 2',
               ),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Enter a quantity';
+                final amount = int.tryParse(value?.trim() ?? '');
+                if (amount == null || amount < 1) {
+                  return 'Enter how many you have';
                 }
                 return null;
               },
             ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: _isDrink
+                  ? Padding(
+                      key: const ValueKey('drink-size'),
+                      padding: const EdgeInsets.only(top: 14),
+                      child: TextFormField(
+                        controller: widget.quantityController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Drink size',
+                          hintText: 'Example: 200ml, 1 bottle',
+                        ),
+                        validator: (value) {
+                          if (!_isDrink) {
+                            return null;
+                          }
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Enter the drink size';
+                          }
+                          return null;
+                        },
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
             const SizedBox(height: 14),
             TextFormField(
-              controller: expiryController,
+              controller: widget.expiryController,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'Expiry date',
@@ -416,7 +538,7 @@ class _ManualFoodForm extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextFormField(
-                    controller: caloriesController,
+                    controller: widget.caloriesController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -426,7 +548,7 @@ class _ManualFoodForm extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
-                    controller: proteinController,
+                    controller: widget.proteinController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -440,7 +562,7 @@ class _ManualFoodForm extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextFormField(
-                    controller: carbsController,
+                    controller: widget.carbsController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -450,7 +572,7 @@ class _ManualFoodForm extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
-                    controller: fatController,
+                    controller: widget.fatController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -464,15 +586,70 @@ class _ManualFoodForm extends StatelessWidget {
               width: double.infinity,
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppTheme.surface,
-                  foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
+                  shape: const StadiumBorder(),
                 ),
-                onPressed: isLoading ? null : onSubmit,
-                child: Text(isLoading ? 'Saving...' : 'Save food'),
+                onPressed: widget.isLoading ? null : widget.onSubmit,
+                child: Text(widget.isLoading ? 'Saving...' : 'Save food'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryChoice extends StatelessWidget {
+  const _CategoryChoice({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.actionBlue
+              : AppTheme.panelSoft.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: selected ? AppTheme.actionBlue : const Color(0x18FFFFFF),
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: selected ? Colors.white : AppTheme.surface,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: selected ? AppTheme.actionBlue : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.white,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],

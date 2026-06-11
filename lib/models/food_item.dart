@@ -31,6 +31,33 @@ class FoodItem {
   final Nutrition nutrition;
   final bool isInInventory;
 
+  int get stockCount {
+    final match = RegExp(
+      r'^\s*(\d+)\s*x\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(quantityLabel);
+    if (match == null) {
+      final plainCount = int.tryParse(quantityLabel.trim());
+      return plainCount == null || plainCount < 1 ? 1 : plainCount;
+    }
+    return int.tryParse(match.group(1) ?? '') ?? 1;
+  }
+
+  String get packageDetail {
+    if (int.tryParse(quantityLabel.trim()) != null) {
+      return 'item';
+    }
+    final match = RegExp(
+      r'^\s*\d+\s*x\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(quantityLabel);
+    final value = match?.group(1)?.trim() ?? quantityLabel.trim();
+    if (value.isEmpty || value == 'Quantity not provided') {
+      return 'Item detail not set';
+    }
+    return value;
+  }
+
   factory FoodItem.fromMap(Map<String, dynamic> map) {
     return FoodItem(
       id: map['id'] as int?,

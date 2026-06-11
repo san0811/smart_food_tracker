@@ -1,4 +1,4 @@
-package com.example.smart_food_tracker
+package com.fridgi.app
 
 import io.flutter.embedding.android.FlutterActivity
 

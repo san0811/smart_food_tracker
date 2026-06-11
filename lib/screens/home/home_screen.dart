@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
+import '../../models/food_item.dart';
 import '../../providers/food_provider.dart';
 import '../Inventory/inventory_screen.dart';
 import '../food/add_food_screen.dart';
@@ -19,6 +20,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  int? _hoveredIndex;
+  late final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,15 +40,20 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     final icons = <IconData>[
-      Icons.home_rounded,
+      Icons.kitchen_rounded,
       Icons.inventory_2_rounded,
       Icons.add_circle_outline_rounded,
-      Icons.restaurant_menu_rounded,
-      Icons.settings_rounded,
+      Icons.receipt_long_rounded,
+      Icons.tune_rounded,
     ];
 
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: pages),
+      body: PageView(
+        controller: _pageController,
+        physics: const BouncingScrollPhysics(),
+        onPageChanged: (index) => setState(() => _selectedIndex = index),
+        children: pages,
+      ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(24, 0, 24, 18),
         child: Container(
@@ -60,20 +74,48 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(icons.length, (index) {
               final selected = index == _selectedIndex;
+              final hovered = index == _hoveredIndex;
               return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedIndex = index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: selected ? AppTheme.surface : Colors.transparent,
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: Icon(
-                      icons[index],
-                      color: selected ? Colors.black : Colors.white70,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  onEnter: (_) => setState(() => _hoveredIndex = index),
+                  onExit: (_) => setState(() => _hoveredIndex = null),
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 180),
+                    scale: selected ? 1.0 : (hovered ? 0.98 : 0.94),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(999),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        splashColor: Colors.white24,
+                        highlightColor: Colors.white12,
+                        onTap: () {
+                          _pageController.animateToPage(
+                            index,
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppTheme.actionBlue
+                                : hovered
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.transparent,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Icon(
+                            icons[index],
+                            color: selected ? Colors.white : Colors.white70,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -86,9 +128,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _DashboardView extends StatelessWidget {
+class _DashboardView extends StatefulWidget {
   const _DashboardView();
 
+  @override
+  State<_DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<_DashboardView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -103,60 +150,14 @@ class _DashboardView extends StatelessWidget {
 
         return SafeArea(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 140),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.surface,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Good Evening',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          Text('Harit', style: theme.textTheme.titleLarge),
-                        ],
-                      ),
-                    ),
-                    const _CircleButton(icon: Icons.notifications_none_rounded),
-                  ],
-                ),
-                const SizedBox(height: 28),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(26),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      _DayChip(day: 'Mon', date: '03'),
-                      _DayChip(day: 'Tue', date: '04'),
-                      _DayChip(day: 'Wed', date: '05'),
-                      _DayChip(day: 'Thu', date: '06', selected: true),
-                      _DayChip(day: 'Fri', date: '07'),
-                      _DayChip(day: 'Sat', date: '08'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 10),
+                const _BrandHeader(),
+                const SizedBox(height: 16),
                 Text('Today at a glance', style: theme.textTheme.headlineSmall),
                 const SizedBox(height: 16),
                 Container(
@@ -252,10 +253,7 @@ class _DashboardView extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
-                Text('Quick tools', style: theme.textTheme.titleLarge),
-                const SizedBox(height: 14),
-                const _QuickFeatureRow(),
+
                 const SizedBox(height: 28),
                 Text('Inventory priorities', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 14),
@@ -269,8 +267,10 @@ class _DashboardView extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _InventoryCard(
                             title: item.name,
-                            subtitle: item.brand ?? item.category,
-                            quantity: item.quantityLabel,
+                            subtitle:
+                                '${item.brand ?? item.category} | ${item.packageDetail}',
+                            quantity: item.stockCount.toString(),
+                            icon: _itemIcon(item),
                           ),
                         ),
                       ),
@@ -281,67 +281,45 @@ class _DashboardView extends StatelessWidget {
       },
     );
   }
-}
 
-class _DayChip extends StatelessWidget {
-  const _DayChip({
-    required this.day,
-    required this.date,
-    this.selected = false,
-  });
-
-  final String day;
-  final String date;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 42,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: selected ? Colors.black : Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          Text(
-            day,
-            style: TextStyle(
-              color: selected ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            date,
-            style: TextStyle(
-              color: selected ? Colors.white : Colors.black54,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
+  IconData _itemIcon(FoodItem item) {
+    return item.category.toLowerCase() == 'drink'
+        ? Icons.local_cafe_rounded
+        : Icons.lunch_dining_rounded;
   }
 }
 
-class _CircleButton extends StatelessWidget {
-  const _CircleButton({required this.icon});
-
-  final IconData icon;
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0x22FFFFFF)),
-        color: AppTheme.panelSoft,
-      ),
-      child: Icon(icon, color: Colors.white),
+    return Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(18),
+          ),
+               child: Image.asset(
+                 'assets/images/Fridgi_logo.png',
+                 fit: BoxFit.contain,
+               ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Fridgi', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 2),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -515,92 +493,18 @@ class _MacroCard extends StatelessWidget {
   }
 }
 
-class _QuickFeatureRow extends StatelessWidget {
-  const _QuickFeatureRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: const [
-        Expanded(
-          child: _FeatureCard(
-            icon: Icons.add_circle_outline_rounded,
-            title: 'Add food',
-            subtitle: 'Manual form or barcode scan',
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _FeatureCard(
-            icon: Icons.qr_code_scanner_rounded,
-            title: 'Barcode',
-            subtitle: 'Read packaged food',
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _FeatureCard(
-            icon: Icons.list_alt_rounded,
-            title: 'Items',
-            subtitle: 'Check saved nutrition',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.panelSoft,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x14FFFFFF)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppTheme.surface,
-            ),
-            child: Icon(icon, color: Colors.black, size: 20),
-          ),
-          const SizedBox(height: 16),
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-        ],
-      ),
-    );
-  }
-}
-
 class _InventoryCard extends StatelessWidget {
   const _InventoryCard({
     required this.title,
     required this.subtitle,
     required this.quantity,
+    required this.icon,
   });
 
   final String title;
   final String subtitle;
   final String quantity;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -616,11 +520,11 @@ class _InventoryCard extends StatelessWidget {
           Container(
             width: 48,
             height: 48,
-            decoration: const BoxDecoration(
-              color: AppTheme.surface,
-              shape: BoxShape.circle,
+            decoration: BoxDecoration(
+              color: AppTheme.actionBlue,
+              borderRadius: BorderRadius.circular(18),
             ),
-            child: const Icon(Icons.eco_rounded, color: Colors.black),
+            child: Icon(icon, color: Colors.white),
           ),
           const SizedBox(width: 14),
           Expanded(

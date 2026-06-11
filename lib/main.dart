@@ -6,11 +6,11 @@ import 'providers/food_provider.dart';
 import 'screens/home/home_screen.dart';
 
 void main() {
-  runApp(const SmartFoodApp());
+  runApp(const FridgiApp());
 }
 
-class SmartFoodApp extends StatelessWidget {
-  const SmartFoodApp({super.key});
+class FridgiApp extends StatelessWidget {
+  const FridgiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +18,7 @@ class SmartFoodApp extends StatelessWidget {
       create: (_) => FoodProvider()..loadItems(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'SmartFood Tracker',
+        title: 'Fridgi',
         theme: AppTheme.darkTheme,
         home: const HomeScreen(),
       ),
