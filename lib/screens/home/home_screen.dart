@@ -48,81 +48,93 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        physics: const BouncingScrollPhysics(),
-        onPageChanged: (index) => setState(() => _selectedIndex = index),
-        children: pages,
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(24, 0, 24, 18),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2A2A2A).withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: const Color(0x18FFFFFF)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x80000000),
-                blurRadius: 30,
-                offset: Offset(0, 16),
-              ),
-            ],
+      backgroundColor: AppTheme.background,
+      body: Stack(
+        children: [
+          PageView(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            onPageChanged: (index) => setState(() => _selectedIndex = index),
+            children: pages,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(icons.length, (index) {
-              final selected = index == _selectedIndex;
-              final hovered = index == _hoveredIndex;
-              return Expanded(
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  onEnter: (_) => setState(() => _hoveredIndex = index),
-                  onExit: (_) => setState(() => _hoveredIndex = null),
-                  child: AnimatedScale(
-                    duration: const Duration(milliseconds: 180),
-                    scale: selected ? 1.0 : (hovered ? 0.98 : 0.94),
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(999),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(999),
-                        splashColor: Colors.white24,
-                        highlightColor: Colors.white12,
-                        onTap: () {
-                          _pageController.animateToPage(
-                            index,
-                            duration: const Duration(milliseconds: 280),
-                            curve: Curves.easeOutCubic,
-                          );
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          curve: Curves.easeOutCubic,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppTheme.actionBlue
-                                : hovered
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : Colors.transparent,
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 24,
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.only(bottom: 0),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A2A).withValues(alpha: 0.94),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: const Color(0x18FFFFFF)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x80000000),
+                      blurRadius: 30,
+                      offset: Offset(0, 16),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(icons.length, (index) {
+                    final selected = index == _selectedIndex;
+                    final hovered = index == _hoveredIndex;
+                    return Expanded(
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        onEnter: (_) => setState(() => _hoveredIndex = index),
+                        onExit: (_) => setState(() => _hoveredIndex = null),
+                        child: AnimatedScale(
+                          duration: const Duration(milliseconds: 160),
+                          scale: selected ? 1.0 : (hovered ? 0.985 : 0.94),
+                          child: Material(
+                            color: Colors.transparent,
                             borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Icon(
-                            icons[index],
-                            color: selected ? Colors.white : Colors.white70,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(999),
+                              splashColor: Colors.white24,
+                              highlightColor: Colors.white12,
+                              onTap: () {
+                                setState(() => _selectedIndex = index);
+                                _pageController.animateToPage(
+                                  index,
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOutCubic,
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? AppTheme.actionBlue
+                                      : hovered
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Icon(
+                                  icons[index],
+                                  color: selected ? Colors.white : Colors.white70,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 ),
-              );
-            }),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -214,7 +226,6 @@ class _DashboardViewState extends State<_DashboardView> {
                       child: _MacroCard(
                         title: 'Protein',
                         amount: '${protein.toStringAsFixed(1)}g',
-                        goal: 'Saved across items',
                         progress: protein == 0
                             ? 0
                             : (protein / 120).clamp(0, 1),
@@ -225,7 +236,6 @@ class _DashboardViewState extends State<_DashboardView> {
                       child: _MacroCard(
                         title: 'Carbs',
                         amount: '${carbs.toStringAsFixed(1)}g',
-                        goal: 'Saved across items',
                         progress: carbs == 0 ? 0 : (carbs / 200).clamp(0, 1),
                       ),
                     ),
@@ -238,7 +248,6 @@ class _DashboardViewState extends State<_DashboardView> {
                       child: _MacroCard(
                         title: 'Fat',
                         amount: '${fat.toStringAsFixed(1)}g',
-                        goal: 'Saved across items',
                         progress: fat == 0 ? 0 : (fat / 70).clamp(0, 1),
                       ),
                     ),
@@ -247,8 +256,9 @@ class _DashboardViewState extends State<_DashboardView> {
                       child: _MacroCard(
                         title: 'Expiry alerts',
                         amount: '${provider.expiringSoonCount} items',
-                        goal: 'Need checking',
-                        progress: provider.expiringSoonCount == 0 ? 0 : 0.55,
+                        progress: provider.expiringSoonCount == 0
+                            ? 0
+                            : (provider.expiringSoonCount / 10).clamp(0, 1),
                       ),
                     ),
                   ],
@@ -333,7 +343,6 @@ class _CalorieRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = target == 0 ? 0.0 : consumed / target;
-    final left = (target - consumed).clamp(0, target);
 
     return SizedBox(
       width: 160,
@@ -349,7 +358,7 @@ class _CalorieRing extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                '$left',
+                '$consumed',
                 style: const TextStyle(
                   color: Colors.black,
                   fontSize: 34,
@@ -357,7 +366,7 @@ class _CalorieRing extends StatelessWidget {
                 ),
               ),
               const Text(
-                'kcal left',
+                'kcal consumed',
                 style: TextStyle(color: Colors.black54, fontSize: 14),
               ),
             ],
@@ -444,50 +453,49 @@ class _MacroCard extends StatelessWidget {
   const _MacroCard({
     required this.title,
     required this.amount,
-    required this.goal,
     required this.progress,
   });
 
   final String title;
   final String amount;
-  final String goal;
   final double progress;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppTheme.panel,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0x12FFFFFF)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 10),
-          Text(
-            amount,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+    return SizedBox(
+      height: 150,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppTheme.panel,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0x12FFFFFF)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Text(
+              amount,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(goal, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: LinearProgressIndicator(
-              minHeight: 7,
-              value: progress,
-              backgroundColor: Colors.white10,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.surface),
+            const Spacer(),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: LinearProgressIndicator(
+                minHeight: 7,
+                value: progress,
+                backgroundColor: Colors.white10,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.surface),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
