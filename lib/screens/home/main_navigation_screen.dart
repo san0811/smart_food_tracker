@@ -10,126 +10,118 @@ import '../Inventory/inventory_screen.dart';
 import '../food/add_food_screen.dart';
 import '../food/food_list_screen.dart';
 import '../settings/settings_screen.dart';
+import 'custom_bottom_nav_bar.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class MainNavigationScreen extends StatefulWidget {
+  const MainNavigationScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  static const Duration _transitionDuration = Duration(milliseconds: 300);
+
+  late final PageController _pageController;
+  late final List<ScrollController> _scrollControllers;
+  late final List<Widget> _pages;
+
   int _selectedIndex = 0;
-  int? _hoveredIndex;
-  late final PageController _pageController = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
+    _scrollControllers = List<ScrollController>.generate(
+      5,
+      (_) => ScrollController(),
+    );
+    _pages = <Widget>[
+      _buildPage(0, const _DashboardView()),
+      _buildPage(1, const InventoryScreen()),
+      _buildPage(2, const AddFoodScreen()),
+      _buildPage(3, const FoodListScreen()),
+      _buildPage(4, const SettingsScreen()),
+    ];
+  }
 
   @override
   void dispose() {
     _pageController.dispose();
+    for (final controller in _scrollControllers) {
+      controller.dispose();
+    }
     super.dispose();
+  }
+
+  void _selectTab(int index) {
+    if (index == _selectedIndex) {
+      _scrollCurrentTabToTop(index);
+      return;
+    }
+
+    _pageController.animateToPage(
+      index,
+      duration: _transitionDuration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _scrollCurrentTabToTop(int index) {
+    if (index != _selectedIndex) {
+      return;
+    }
+
+    final controller = _scrollControllers[index];
+    if (!controller.hasClients) {
+      return;
+    }
+
+    controller.animateTo(
+      0,
+      duration: _transitionDuration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Widget _buildPage(int index, Widget child) {
+    return _KeepAlivePage(
+      child: PrimaryScrollController(
+        controller: _scrollControllers[index],
+        child: child,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = <Widget>[
-      const _DashboardView(),
-      const InventoryScreen(),
-      const AddFoodScreen(),
-      const FoodListScreen(),
-      const SettingsScreen(),
-    ];
-
-    final icons = <IconData>[
-      Icons.kitchen_rounded,
-      Icons.inventory_2_rounded,
-      Icons.add_circle_outline_rounded,
-      Icons.receipt_long_rounded,
-      Icons.tune_rounded,
-    ];
-
     return Scaffold(
       backgroundColor: AppTheme.background,
+      extendBody: true,
       body: Stack(
         children: [
           PageView(
             controller: _pageController,
             physics: const BouncingScrollPhysics(),
-            onPageChanged: (index) => setState(() => _selectedIndex = index),
-            children: pages,
+            onPageChanged: (index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            },
+            children: _pages,
           ),
           Positioned(
-            left: 24,
-            right: 24,
-            bottom: 24,
+            left: 0,
+            right: 0,
+            bottom: 0,
             child: SafeArea(
               top: false,
-              minimum: const EdgeInsets.only(bottom: 0),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2A).withValues(alpha: 0.94),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: const Color(0x18FFFFFF)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x80000000),
-                      blurRadius: 30,
-                      offset: Offset(0, 16),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(icons.length, (index) {
-                    final selected = index == _selectedIndex;
-                    final hovered = index == _hoveredIndex;
-                    return Expanded(
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        onEnter: (_) => setState(() => _hoveredIndex = index),
-                        onExit: (_) => setState(() => _hoveredIndex = null),
-                        child: AnimatedScale(
-                          duration: const Duration(milliseconds: 160),
-                          scale: selected ? 1.0 : (hovered ? 0.985 : 0.94),
-                          child: Material(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(999),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(999),
-                              splashColor: Colors.white24,
-                              highlightColor: Colors.white12,
-                              onTap: () {
-                                setState(() => _selectedIndex = index);
-                                _pageController.animateToPage(
-                                  index,
-                                  duration: const Duration(milliseconds: 220),
-                                  curve: Curves.easeOutCubic,
-                                );
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 180),
-                                curve: Curves.easeOutCubic,
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? AppTheme.actionBlue
-                                      : hovered
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Icon(
-                                  icons[index],
-                                  color: selected ? Colors.white : Colors.white70,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 14, top: 4),
+                child: CustomBottomNavBar(
+                  currentIndex: _selectedIndex,
+                  onTap: _selectTab,
+                  onDoubleTapCurrentTab: _scrollCurrentTabToTop,
                 ),
               ),
             ),
@@ -137,6 +129,27 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+class _KeepAlivePage extends StatefulWidget {
+  const _KeepAlivePage({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 
@@ -182,7 +195,7 @@ class _DashboardViewState extends State<_DashboardView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Nutrition Overview',
+                        'Saved nutrition overview',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 18,
@@ -226,9 +239,8 @@ class _DashboardViewState extends State<_DashboardView> {
                       child: _MacroCard(
                         title: 'Protein',
                         amount: '${protein.toStringAsFixed(1)}g',
-                        progress: protein == 0
-                            ? 0
-                            : (protein / 120).clamp(0, 1),
+                        progress:
+                            protein == 0 ? 0 : (protein / 120).clamp(0, 1),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -263,16 +275,13 @@ class _DashboardViewState extends State<_DashboardView> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 28),
                 Text('Inventory priorities', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 14),
                 if (inventory.isEmpty)
                   const _EmptyPriorityCard()
                 else
-                  ...inventory
-                      .take(3)
-                      .map(
+                  ...inventory.take(3).map(
                         (item) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _InventoryCard(
@@ -362,7 +371,7 @@ class _CalorieRing extends StatelessWidget {
                 ),
               ),
               const Text(
-                'kcal',
+                'kcal consumed',
                 style: TextStyle(color: Colors.black54, fontSize: 14),
               ),
             ],
@@ -487,7 +496,8 @@ class _MacroCard extends StatelessWidget {
                 minHeight: 7,
                 value: progress,
                 backgroundColor: Colors.white10,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.surface),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(AppTheme.surface),
               ),
             ),
           ],

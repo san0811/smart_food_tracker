@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'config/app_theme.dart';
 import 'providers/food_provider.dart';
-import 'screens/home/home_screen.dart';
+import 'screens/home/main_navigation_screen.dart';
 
 void main() {
   runApp(const FridgiApp());
@@ -20,7 +20,7 @@ class FridgiApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'Fridgi',
         theme: AppTheme.darkTheme,
-        home: const HomeScreen(),
+        home: const MainNavigationScreen(),
       ),
     );
   }

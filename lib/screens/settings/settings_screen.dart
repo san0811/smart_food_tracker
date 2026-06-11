@@ -43,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _SwitchRow(
                         icon: Icons.notifications_active_rounded,
                         title: 'Expiry alerts',
-                        subtitle: 'Push reminders before food expires',
+                        subtitle: 'Get notified when items are nearing expiry',
                         value: _expiryAlertsEnabled,
                         onChanged: (value) {
                           setState(() {
@@ -143,12 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           });
                         },
                       ),
-                      const SizedBox(height: 12),
-                      _StaticRow(
-                        icon: Icons.dark_mode_rounded,
-                        title: 'Theme',
-                        subtitle: 'Dark mode',
-                      ),
+                      
                     ],
                   ),
                 ),
@@ -321,38 +316,6 @@ class _InsightRow extends StatelessWidget {
               color: Colors.white,
               fontWeight: FontWeight.w800,
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StaticRow extends StatelessWidget {
-  const _StaticRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _SettingIcon(icon: icon),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-            ],
           ),
         ),
       ],
