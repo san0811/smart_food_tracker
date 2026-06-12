@@ -7,7 +7,9 @@ import '../../providers/food_provider.dart';
 import '../food/edit_food_screen.dart';
 
 class InventoryScreen extends StatelessWidget {
-  const InventoryScreen({super.key});
+  const InventoryScreen({super.key, this.onHistoryRequested});
+
+  final VoidCallback? onHistoryRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +86,10 @@ class InventoryScreen extends StatelessWidget {
                   ...availableItems.map(
                     (item) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _InventoryEntry(item: item),
+                      child: _InventoryEntry(
+                        item: item,
+                        onHistoryRequested: onHistoryRequested,
+                      ),
                     ),
                   ),
                 const SizedBox(height: 24),
@@ -170,9 +175,10 @@ class _InventoryStat extends StatelessWidget {
 }
 
 class _InventoryEntry extends StatelessWidget {
-  const _InventoryEntry({required this.item});
+  const _InventoryEntry({required this.item, required this.onHistoryRequested});
 
   final FoodItem item;
+  final VoidCallback? onHistoryRequested;
 
   @override
   Widget build(BuildContext context) {
@@ -253,6 +259,27 @@ class _InventoryEntry extends StatelessWidget {
                 onPressed: () => _openEditFoodScreen(context, item),
                 icon: Icon(Icons.edit_rounded, color: foreground),
               ),
+              const SizedBox(height: 4),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  backgroundColor: highlighted
+                      ? Colors.black.withValues(alpha: 0.08)
+                      : AppTheme.surface,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => _useItem(context, item, onHistoryRequested),
+                child: const Text('Use'),
+              ),
+              const SizedBox(height: 10),
               SizedBox(
                 width: 92,
                 child: Text(
@@ -342,6 +369,43 @@ Future<void> _openEditFoodScreen(BuildContext context, FoodItem item) {
   return Navigator.of(
     context,
   ).push(MaterialPageRoute(builder: (_) => EditFoodScreen(item: item)));
+}
+
+Future<void> _useItem(
+  BuildContext context,
+  FoodItem item,
+  VoidCallback? onHistoryRequested,
+) async {
+  final provider = context.read<FoodProvider>();
+
+  final used = await provider.useInventoryItem(item: item, quantityUsed: 1);
+
+  if (!context.mounted) {
+    return;
+  }
+
+  if (used == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          provider.errorMessage ?? 'Could not update this item right now.',
+        ),
+      ),
+    );
+    return;
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        item.stockCount > 1
+            ? 'Used 1 from ${item.name}'
+            : '${item.name} moved to history',
+      ),
+    ),
+  );
+
+  onHistoryRequested?.call();
 }
 
 IconData _itemIcon(FoodItem item) {

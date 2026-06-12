@@ -38,7 +38,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
     _pages = <Widget>[
       _buildPage(0, const _DashboardView()),
-      _buildPage(1, const InventoryScreen()),
+      _buildPage(1, InventoryScreen(onHistoryRequested: () => _selectTab(3))),
       _buildPage(2, const AddFoodScreen()),
       _buildPage(3, const FoodListScreen()),
       _buildPage(4, const SettingsScreen()),
@@ -239,8 +239,9 @@ class _DashboardViewState extends State<_DashboardView> {
                       child: _MacroCard(
                         title: 'Protein',
                         amount: '${protein.toStringAsFixed(1)}g',
-                        progress:
-                            protein == 0 ? 0 : (protein / 120).clamp(0, 1),
+                        progress: protein == 0
+                            ? 0
+                            : (protein / 120).clamp(0, 1),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -281,7 +282,9 @@ class _DashboardViewState extends State<_DashboardView> {
                 if (inventory.isEmpty)
                   const _EmptyPriorityCard()
                 else
-                  ...inventory.take(3).map(
+                  ...inventory
+                      .take(3)
+                      .map(
                         (item) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: _InventoryCard(
@@ -496,8 +499,9 @@ class _MacroCard extends StatelessWidget {
                 minHeight: 7,
                 value: progress,
                 backgroundColor: Colors.white10,
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(AppTheme.surface),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppTheme.surface,
+                ),
               ),
             ),
           ],

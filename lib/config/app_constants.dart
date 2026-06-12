@@ -4,4 +4,5 @@ class AppConstants {
       'https://world.openfoodfacts.org/api/v0/product';
   static const String databaseName = 'smart_food_tracker.db';
   static const String foodItemsTable = 'food_items';
+  static const String appSettingsTable = 'app_settings';
 }

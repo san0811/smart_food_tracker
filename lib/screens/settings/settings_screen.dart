@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
+import '../../database/database_helper.dart';
+import '../../models/expiry_notification_settings.dart';
 import '../../models/food_item.dart';
 import '../../providers/food_provider.dart';
 
@@ -13,10 +17,64 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final Set<int> _notificationDays = {7, 3};
-  bool _expiryAlertsEnabled = true;
+  ExpiryNotificationSettings _notificationSettings =
+      ExpiryNotificationSettings.defaults();
+  bool _isNotificationSettingsLoaded = false;
   bool _compactInventory = false;
   bool _softMotion = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationSettings();
+  }
+
+  Future<void> _loadNotificationSettings() async {
+    final settings =
+        await DatabaseHelper.instance.getExpiryNotificationSettings();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _notificationSettings = settings;
+      _isNotificationSettingsLoaded = true;
+    });
+  }
+
+  Future<void> _saveNotificationSettings(FoodProvider provider) async {
+    await DatabaseHelper.instance.saveExpiryNotificationSettings(
+      _notificationSettings,
+    );
+    await provider.refreshExpiryNotifications();
+  }
+
+  void _setExpiryAlertsEnabled(bool value, FoodProvider provider) {
+    setState(() {
+      _notificationSettings = _notificationSettings.copyWith(enabled: value);
+    });
+    unawaited(_saveNotificationSettings(provider));
+  }
+
+  void _toggleReminderDay(int days, FoodProvider provider) {
+    if (!_notificationSettings.enabled) {
+      return;
+    }
+
+    setState(() {
+      final updatedDays = Set<int>.from(_notificationSettings.reminderDays);
+      if (updatedDays.contains(days)) {
+        updatedDays.remove(days);
+      } else {
+        updatedDays.add(days);
+      }
+      _notificationSettings = _notificationSettings.copyWith(
+        reminderDays: updatedDays,
+      );
+    });
+    unawaited(_saveNotificationSettings(provider));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,14 +101,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _SwitchRow(
                         icon: Icons.notifications_active_rounded,
                         title: 'Expiry alerts',
-                        subtitle: 'Get notified when items are nearing expiry',
-                        value: _expiryAlertsEnabled,
-                        onChanged: (value) {
-                          setState(() {
-                            _expiryAlertsEnabled = value;
-                          });
-                        },
+                        subtitle:
+                            'Start daily reminders when items are nearing expiry',
+                        value: _notificationSettings.enabled,
+                        onChanged: _isNotificationSettingsLoaded
+                            ? (value) => _setExpiryAlertsEnabled(
+                                  value,
+                                  provider,
+                                )
+                            : null,
                       ),
+                      if (!_isNotificationSettingsLoaded) ...[
+                        const SizedBox(height: 8),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Loading saved notification settings...',
+                            style: TextStyle(color: Colors.white60),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 18),
                       Align(
                         alignment: Alignment.centerLeft,
@@ -62,26 +132,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 12),
                       Row(
                         children: [7, 5, 3].map((days) {
-                          final selected = _notificationDays.contains(days);
+                          final selected =
+                              _notificationSettings.reminderDays.contains(days);
                           return Expanded(
                             child: Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: _ChoicePill(
                                 label: '$days days',
                                 selected: selected,
-                                enabled: _expiryAlertsEnabled,
-                                onTap: () {
-                                  if (!_expiryAlertsEnabled) {
-                                    return;
-                                  }
-                                  setState(() {
-                                    if (selected) {
-                                      _notificationDays.remove(days);
-                                    } else {
-                                      _notificationDays.add(days);
-                                    }
-                                  });
-                                },
+                                enabled: _notificationSettings.enabled,
+                                onTap: _isNotificationSettingsLoaded
+                                    ? () => _toggleReminderDay(
+                                          days,
+                                          provider,
+                                        )
+                                    : () {},
                               ),
                             ),
                           );
@@ -143,7 +208,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           });
                         },
                       ),
-                      
                     ],
                   ),
                 ),
@@ -214,7 +278,7 @@ class _SwitchRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {

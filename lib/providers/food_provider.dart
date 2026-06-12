@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../database/database_helper.dart';
+import '../services/expiry_notification_service.dart';
 import '../models/food_item.dart';
 import '../models/nutrition.dart';
 import '../services/barcode_service.dart';
@@ -110,6 +111,7 @@ class FoodProvider extends ChangeNotifier {
       }
       _latestLookup = saved;
       _errorMessage = null;
+      await refreshExpiryNotifications();
     } catch (error) {
       _errorMessage = error.toString();
     } finally {
@@ -154,6 +156,7 @@ class FoodProvider extends ChangeNotifier {
       _items.insert(0, saved);
       _errorMessage = null;
       notifyListeners();
+      await refreshExpiryNotifications();
       return saved;
     } catch (error) {
       _errorMessage = error.toString();
@@ -210,6 +213,7 @@ class FoodProvider extends ChangeNotifier {
       _items.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       _errorMessage = null;
       notifyListeners();
+      await refreshExpiryNotifications();
       return updated;
     } catch (error) {
       _errorMessage = error.toString();
@@ -234,10 +238,75 @@ class FoodProvider extends ChangeNotifier {
       isInInventory: updated.isInInventory,
     );
 
+    if (!updated.isInInventory) {
+      await refreshExpiryNotifications();
+    }
+
     final index = _items.indexWhere((entry) => entry.id == item.id);
     if (index != -1) {
       _items[index] = updated;
       notifyListeners();
+      await refreshExpiryNotifications();
+    }
+  }
+
+  Future<FoodItem?> useInventoryItem({
+    required FoodItem item,
+    required int quantityUsed,
+  }) async {
+    if (item.id == null) {
+      return null;
+    }
+
+    final usedQuantity = quantityUsed.clamp(1, item.stockCount);
+    final now = DateTime.now();
+    final detail = _quantityDetail(item);
+    final remainingQuantity = item.stockCount - usedQuantity;
+
+    _setLoading(true);
+    try {
+      if (remainingQuantity <= 0) {
+        await _databaseHelper.updateInventoryStatus(
+          id: item.id!,
+          isInInventory: false,
+        );
+      await loadItems();
+      await refreshExpiryNotifications();
+        _errorMessage = null;
+        return item.copyWith(isInInventory: false, updatedAt: now);
+      }
+
+      final updatedActive = item.copyWith(
+        quantityLabel: _buildQuantityLabel(detail, remainingQuantity),
+        updatedAt: now,
+      );
+      await _databaseHelper.updateFoodItem(updatedActive);
+
+      final usedEntry = FoodItem(
+        name: item.name,
+        category: item.category,
+        quantityLabel: _buildQuantityLabel(detail, usedQuantity),
+        source: item.source,
+        createdAt: now,
+        updatedAt: now,
+        barcode: item.barcode,
+        brand: item.brand,
+        expiryDate: item.expiryDate,
+        imageUrl: item.imageUrl,
+        nutrition: item.nutrition,
+        isInInventory: false,
+      );
+      final usedId = await _databaseHelper.insertFoodItem(usedEntry);
+      final archivedUsed = usedEntry.copyWith(id: usedId);
+
+      await loadItems();
+      _errorMessage = null;
+      return archivedUsed;
+    } catch (error) {
+      _errorMessage = error.toString();
+      return null;
+    } finally {
+      _setLoading(false);
     }
   }
 
@@ -246,11 +315,37 @@ class FoodProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshExpiryNotifications() async {
+    try {
+      await ExpiryNotificationService.instance.syncFromInventory(_items);
+    } catch (_) {
+      // Notification sync should never break inventory updates.
+    }
+  }
+
   String _buildQuantityLabel(String baseLabel, int quantity) {
     final normalizedBase = baseLabel.replaceFirst(
       RegExp(r'^\d+\s*x\s+', caseSensitive: false),
       '',
     );
     return '${quantity.clamp(1, 999)} x $normalizedBase';
+  }
+
+  String _quantityDetail(FoodItem item) {
+    final match = RegExp(
+      r'^\s*\d+\s*x\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(item.quantityLabel);
+    final detail = match?.group(1)?.trim();
+    if (detail != null && detail.isNotEmpty) {
+      return detail;
+    }
+
+    final fallback = item.packageDetail.trim();
+    if (fallback.isEmpty || fallback == 'Item detail not set') {
+      return 'item';
+    }
+
+    return fallback;
   }
 }
